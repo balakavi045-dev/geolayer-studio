@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GeoLayer Studio — Documentary Edition</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#080a0f;
+  --panel:#0e1018;
+  --panel2:#13161f;
+  --border:#1e2235;
+  --border2:#252a3a;
+  --gold:#c9a84c;
+  --gold2:#e8c97a;
+  --accent:#4a9eff;
+  --red:#e05252;
+  --text:#d4d8e8;
+  --muted:#5a6070;
+  --dim:#3a3f52;
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+
+/* HEADER */
+header{
+  height:52px;background:var(--panel);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 18px;gap:14px;flex-shrink:0;z-index:1000;
+}
+.logo{
+  font-family:'Cinzel',serif;font-size:14px;font-weight:700;
+  letter-spacing:0.12em;color:var(--gold);display:flex;align-items:center;gap:10px;
+}
+.logo-mark{
+  width:26px;height:26px;border:1.5px solid var(--gold);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;position:relative;
+}
+.logo-mark::before{
+  content:'';position:absolute;width:8px;height:8px;
+  background:var(--gold);border-radius:50%;
+}
+.logo-mark::after{
+  content:'';position:absolute;width:20px;height:20px;
+  border:1px solid rgba(201,168,76,0.3);border-radius:50%;
+}
+.sep{width:1px;height:28px;background:var(--border2);}
+.badge{
+  font-size:9px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;
+  background:rgba(201,168,76,0.08);color:var(--gold);
+  border:1px solid rgba(201,168,76,0.25);padding:3px 9px;border-radius:3px;
+}
+.hdr-right{margin-left:auto;display:flex;gap:8px;align-items:center;}
+.btn{
+  font-family:'Inter',sans-serif;font-size:11px;font-weight:500;
+  padding:6px 14px;border-radius:4px;border:1px solid var(--border2);
+  background:var(--panel2);color:var(--text);cursor:pointer;transition:all 0.15s;
+  letter-spacing:0.02em;
+}
+.btn:hover{border-color:var(--gold);color:var(--gold);}
+.btn-gold{background:var(--gold);color:#080a0f;border-color:var(--gold);font-weight:600;}
+.btn-gold:hover{background:var(--gold2);color:#080a0f;}
+
+/* WORKSPACE */
+.workspace{display:flex;flex:1;overflow:hidden;}
+
+/* LEFT SIDEBAR */
+.sidebar{
+  width:248px;background:var(--panel);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;
+}
+.sec{padding:14px 14px 12px;border-bottom:1px solid var(--border);}
+.sec-title{
+  font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:6px;
+}
+.sec-title::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* Search */
+.search-wrap{position:relative;}
+.search-input{
+  width:100%;padding:8px 10px 8px 30px;
+  background:var(--panel2);border:1px solid var(--border2);
+  border-radius:4px;color:var(--text);
+  font-family:'Inter',sans-serif;font-size:12px;outline:none;transition:border 0.15s;
+}
+.search-input:focus{border-color:var(--gold);}
+.search-input::placeholder{color:var(--muted);}
+.s-icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px;}
+
+/* Map Styles */
+.style-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+.style-card{
+  border-radius:4px;overflow:hidden;border:1.5px solid transparent;
+  cursor:pointer;transition:all 0.15s;
+}
+.style-card:hover{border-color:var(--gold);}
+.style-card.active{border-color:var(--gold);}
+.style-thumb{
+  width:100%;aspect-ratio:16/9;display:flex;
+  align-items:center;justify-content:center;font-size:20px;
+}
+.style-lbl{
+  font-size:9px;font-weight:500;padding:3px 6px;
+  background:var(--panel2);color:var(--muted);text-align:center;letter-spacing:0.05em;
+}
+.style-card.active .style-lbl{color:var(--gold);}
+
+/* Sequence List */
+.seq-list{display:flex;flex-direction:column;gap:4px;}
+.seq-item{
+  background:var(--panel2);border:1px solid var(--border2);border-radius:4px;
+  padding:8px 10px;cursor:pointer;transition:all 0.15s;
+  display:flex;align-items:center;gap:8px;
+}
+.seq-item:hover{border-color:var(--gold);}
+.seq-item.active{border-color:var(--gold);background:rgba(201,168,76,0.06);}
+.seq-num{
+  font-family:'Cinzel',serif;font-size:10px;color:var(--gold);
+  width:16px;text-align:center;flex-shrink:0;
+}
+.seq-info{flex:1;min-width:0;}
+.seq-name{font-size:11px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.seq-meta{font-size:10px;color:var(--muted);margin-top:1px;}
+.seq-del{
+  color:var(--muted);font-size:12px;cursor:pointer;
+  padding:2px 4px;border-radius:3px;transition:all 0.15s;flex-shrink:0;
+}
+.seq-del:hover{color:var(--red);background:rgba(224,82,82,0.1);}
+.add-seq-btn{
+  width:100%;padding:7px;border:1px dashed var(--border2);border-radius:4px;
+  background:transparent;color:var(--muted);font-size:11px;cursor:pointer;
+  transition:all 0.15s;margin-top:4px;font-family:'Inter',sans-serif;
+}
+.add-seq-btn:hover{border-color:var(--gold);color:var(--gold);}
+
+/* MAP */
+.map-wrap{flex:1;position:relative;overflow:hidden;}
+#map{width:100%;height:100%;}
+.leaflet-control-zoom{display:none;}
+.leaflet-control-attribution{background:rgba(8,10,15,0.7)!important;color:#333!important;font-size:9px!important;}
+.leaflet-control-attribution a{color:#444!important;}
+
+/* MAP OVERLAYS */
+.ov{position:absolute;z-index:500;pointer-events:none;}
+.coord-bar{
+  bottom:14px;left:50%;transform:translateX(-50%);
+  background:rgba(8,10,15,0.85);backdrop-filter:blur(10px);
+  border:1px solid var(--border2);border-radius:4px;
+  padding:5px 16px;font-family:'JetBrains Mono',monospace;
+  font-size:10px;color:var(--muted);white-space:nowrap;pointer-events:auto;
+}
+.coord-bar span{color:var(--text);}
+.zoom-pill{
+  top:14px;left:50%;transform:translateX(-50%);
+  background:rgba(8,10,15,0.85);backdrop-filter:blur(10px);
+  border:1px solid var(--border2);border-radius:4px;
+  padding:4px 14px;font-family:'JetBrains Mono',monospace;
+  font-size:10px;color:var(--muted);
+}
+.zoom-pill span{color:var(--gold);}
+
+/* Cinematic vignette */
+.vignette{
+  position:absolute;inset:0;pointer-events:none;z-index:400;
+  background:radial-gradient(ellipse at center, transparent 60%, rgba(8,10,15,0.55) 100%);
+}
+
+/* Location pin indicator */
+.fly-pin{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  z-index:600;pointer-events:none;opacity:0;transition:opacity 0.3s;
+}
+.fly-pin.show{opacity:1;}
+.fly-pin-inner{
+  width:16px;height:16px;border-radius:50%;
+  background:var(--gold);border:2px solid #fff;
+  box-shadow:0 0 0 0 rgba(201,168,76,0.6);
+  animation:pinPulse 1.5s ease-out infinite;
+}
+@keyframes pinPulse{
+  0%{box-shadow:0 0 0 0 rgba(201,168,76,0.6);}
+  70%{box-shadow:0 0 0 18px rgba(201,168,76,0);}
+  100%{box-shadow:0 0 0 0 rgba(201,168,76,0);}
+}
+
+/* Location label overlay */
+.loc-label{
+  position:absolute;top:50%;left:50%;transform:translate(-50%, -44px);
+  z-index:601;pointer-events:none;opacity:0;transition:opacity 0.4s;
+  text-align:center;
+}
+.loc-label.show{opacity:1;}
+.loc-label-name{
+  font-family:'Cinzel',serif;font-size:15px;font-weight:600;
+  color:#fff;letter-spacing:0.1em;
+  text-shadow:0 2px 12px rgba(0,0,0,0.9),0 0 30px rgba(201,168,76,0.4);
+}
+.loc-label-sub{
+  font-size:10px;letter-spacing:0.18em;text-transform:uppercase;
+  color:var(--gold);margin-top:3px;
+  text-shadow:0 1px 6px rgba(0,0,0,0.8);
+}
+
+/* RIGHT PANEL */
+.right-panel{
+  width:232px;background:var(--panel);border-left:1px solid var(--border);
+  display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;
+}
+
+/* Zoom Settings */
+.setting-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.setting-lbl{font-size:11px;color:var(--muted);}
+.setting-val{
+  font-family:'JetBrains Mono',monospace;font-size:11px;
+  color:var(--gold);background:var(--panel2);border:1px solid var(--border2);
+  border-radius:3px;padding:3px 8px;min-width:48px;text-align:center;
+}
+input[type=range]{width:100%;accent-color:var(--gold);margin:4px 0 10px;}
+.range-lbl{display:flex;justify-content:space-between;font-size:9px;color:var(--muted);}
+
+/* Easing picker */
+.ease-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:10px;}
+.ease-btn{
+  padding:5px 4px;border-radius:4px;border:1px solid var(--border2);
+  background:var(--panel2);color:var(--muted);font-size:10px;
+  cursor:pointer;transition:all 0.15s;text-align:center;font-family:'Inter',sans-serif;
+}
+.ease-btn:hover{border-color:var(--gold);color:var(--gold);}
+.ease-btn.active{border-color:var(--gold);background:rgba(201,168,76,0.1);color:var(--gold);}
+
+/* Preview box */
+.preview-box{
+  background:var(--panel2);border:1px solid var(--border2);border-radius:4px;
+  padding:10px;margin-bottom:10px;
+}
+.preview-title{font-size:10px;color:var(--muted);margin-bottom:6px;}
+.preview-seq{display:flex;flex-direction:column;gap:3px;}
+.preview-step{
+  font-size:10px;padding:4px 8px;border-radius:3px;
+  border-left:2px solid var(--border2);color:var(--muted);
+  transition:all 0.3s;
+}
+.preview-step.current{border-left-color:var(--gold);color:var(--gold);background:rgba(201,168,76,0.06);}
+.preview-step.done{border-left-color:var(--dim);color:var(--dim);}
+
+/* TIMELINE */
+.timeline{
+  height:72px;background:var(--panel);border-top:1px solid var(--border);
+  display:flex;align-items:center;padding:0 18px;gap:12px;flex-shrink:0;
+}
+.tl-btn{
+  width:34px;height:34px;border-radius:50%;
+  background:var(--gold);border:none;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:13px;flex-shrink:0;color:#080a0f;
+  transition:background 0.15s;
+}
+.tl-btn:hover{background:var(--gold2);}
+.tl-btn.secondary{background:var(--panel2);border:1px solid var(--border2);color:var(--text);font-size:11px;}
+.tl-btn.secondary:hover{border-color:var(--gold);color:var(--gold);}
+.tl-track{
+  flex:1;height:3px;background:var(--border2);border-radius:2px;
+  position:relative;cursor:pointer;
+}
+.tl-fill{height:100%;background:var(--gold);border-radius:2px;width:0%;transition:width 0.1s;}
+.tl-head{
+  width:11px;height:11px;border-radius:50%;
+  background:var(--gold);position:absolute;
+  top:50%;transform:translate(-50%,-50%);left:0%;
+  cursor:grab;transition:left 0.1s;
+}
+.tl-markers{
+  position:absolute;top:100%;margin-top:4px;
+  width:100%;display:flex;justify-content:space-between;
+}
+.tl-mark{font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace;}
+.tl-time{
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;color:var(--muted);flex-shrink:0;
+  min-width:70px;text-align:right;
+}
+.tl-time span{color:var(--gold);}
+
+/* Notif */
+.notif{
+  position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--panel2);border:1px solid var(--gold);
+  border-radius:4px;padding:8px 18px;font-size:11px;color:var(--gold);
+  z-index:9999;opacity:0;transition:all 0.3s;pointer-events:none;
+  font-family:'Cinzel',serif;letter-spacing:0.05em;white-space:nowrap;
+}
+.notif.show{transform:translateX(-50%) translateY(0);opacity:1;}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark"></div>
+    GeoLayer Studio
+  </div>
+  <div class="sep"></div>
+  <span class="badge">Documentary Edition · Phase 2</span>
+  <div class="hdr-right">
+    <button class="btn" onclick="previewAll()">▶ Preview All</button>
+    <button class="btn btn-gold" onclick="exportSequence()">⬇ Export Sequence</button>
+  </div>
+</header>
+
+<div class="workspace">
+
+  <!-- LEFT SIDEBAR -->
+  <div class="sidebar">
+
+    <!-- Search -->
+    <div class="sec">
+      <div class="sec-title">Search & Fly To</div>
+      <div class="search-wrap">
+        <span class="s-icon">⌕</span>
+        <input class="search-input" id="searchInput" placeholder="City, country, landmark…" onkeydown="handleSearch(event)"/>
+      </div>
+    </div>
+
+    <!-- Map Style -->
+    <div class="sec">
+      <div class="sec-title">Map Style</div>
+      <div class="style-grid">
+        <div class="style-card" onclick="setStyle('dark',this)">
+          <div class="style-thumb" style="background:#060810;">🌑</div>
+          <div class="style-lbl">Cinematic Dark</div>
+        </div>
+        <div class="style-card active" onclick="setStyle('streets',this)">
+          <div class="style-thumb" style="background:#0d1520;">🗺️</div>
+          <div class="style-lbl">Documentary</div>
+        </div>
+        <div class="style-card" onclick="setStyle('satellite',this)">
+          <div class="style-thumb" style="background:#050f08;">🛰️</div>
+          <div class="style-lbl">Satellite</div>
+        </div>
+        <div class="style-card" onclick="setStyle('terrain',this)">
+          <div class="style-thumb" style="background:#0a1208;">⛰️</div>
+          <div class="style-lbl">Terrain</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Zoom Sequence -->
+    <div class="sec" style="flex:1;">
+      <div class="sec-title">Zoom Sequence</div>
+      <div class="seq-list" id="seqList"></div>
+      <button class="add-seq-btn" onclick="addCurrentView()">+ Add Current View as Keyframe</button>
+    </div>
+
+  </div>
+
+  <!-- MAP -->
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div class="vignette"></div>
+
+    <!-- Location label -->
+    <div class="loc-label ov" id="locLabel">
+      <div class="loc-label-name" id="locName"></div>
+      <div class="loc-label-sub" id="locSub"></div>
+    </div>
+
+    <!-- Fly pin -->
+    <div class="fly-pin" id="flyPin">
+      <div class="fly-pin-inner"></div>
+    </div>
+
+    <!-- Overlays -->
+    <div class="ov coord-bar">
+      Lat <span id="latVal">20.0000</span> &nbsp;·&nbsp; Lng <span id="lngVal">78.0000</span>
+    </div>
+    <div class="ov zoom-pill">
+      Zoom <span id="zoomVal">4</span>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+
+    <!-- Zoom settings -->
+    <div class="sec">
+      <div class="sec-title">Zoom Settings</div>
+      <div class="setting-row">
+        <span class="setting-lbl">Target Zoom</span>
+        <span class="setting-val" id="zoomTargetVal">8</span>
+      </div>
+      <input type="range" min="2" max="18" value="8" id="zoomTarget" oninput="updateZoomTarget(this.value)"/>
+      <div class="range-lbl"><span>World</span><span>Street</span></div>
+
+      <div class="setting-row" style="margin-top:8px;">
+        <span class="setting-lbl">Duration (sec)</span>
+        <span class="setting-val" id="durationVal">3.0s</span>
+      </div>
+      <input type="range" min="1" max="10" value="3" step="0.5" id="duration" oninput="updateDuration(this.value)"/>
+      <div class="range-lbl"><span>Fast</span><span>Slow</span></div>
+    </div>
+
+    <!-- Easing -->
+    <div class="sec">
+      <div class="sec-title">Zoom Easing</div>
+      <div class="ease-grid">
+        <div class="ease-btn active" onclick="setEase('ease-in-out',this)">Smooth</div>
+        <div class="ease-btn" onclick="setEase('ease-in',this)">Dramatic</div>
+        <div class="ease-btn" onclick="setEase('ease-out',this)">Land Fast</div>
+        <div class="ease-btn" onclick="setEase('linear',this)">Linear</div>
+      </div>
+    </div>
+
+    <!-- Label overlay -->
+    <div class="sec">
+      <div class="sec-title">Location Label</div>
+      <input class="search-input" id="labelName" placeholder="Location name…" style="margin-bottom:6px;"/>
+      <input class="search-input" id="labelSub" placeholder="Subtitle (country, year…)"/>
+      <button class="btn" style="width:100%;margin-top:8px;" onclick="applyLabel()">Apply Label to Map</button>
+    </div>
+
+    <!-- Sequence preview -->
+    <div class="sec" style="flex:1;">
+      <div class="sec-title">Sequence Preview</div>
+      <div class="preview-box">
+        <div class="preview-title">Keyframes</div>
+        <div class="preview-seq" id="previewSeq">
+          <div style="font-size:10px;color:var(--muted);font-style:italic;">No keyframes yet</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- TIMELINE -->
+<div class="timeline">
+  <button class="tl-btn secondary" onclick="skipBack()">⏮</button>
+  <button class="tl-btn" id="playBtn" onclick="togglePlay()">▶</button>
+  <button class="tl-btn secondary" onclick="skipForward()">⏭</button>
+  <div style="flex:1;position:relative;">
+    <div class="tl-track" onclick="seekTl(event)" id="tlTrack">
+      <div class="tl-fill" id="tlFill"></div>
+      <div class="tl-head" id="tlHead"></div>
+    </div>
+    <div class="tl-markers" id="tlMarkers"></div>
+  </div>
+  <div class="tl-time"><span id="tlCur">0:00</span> / <span id="tlTot">0:00</span></div>
+</div>
+
+<div class="notif" id="notif"></div>
+
+<script>
+// ── MAP ──
+const map = L.map('map',{center:[20,78],zoom:4,zoomControl:false,doubleClickZoom:false});
+
+const tiles = {
+  streets: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_matter_no_labels/{z}/{x}/{y}{r}.png',{attribution:'© CartoDB'}),
+  dark:    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© CartoDB'}),
+  satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'© Esri'}),
+  terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{attribution:'© OpenTopoMap'}),
+};
+tiles.streets.addTo(map);
+let curTile = tiles.streets;
+
+function setStyle(name,el){
+  map.removeLayer(curTile);
+  curTile=tiles[name];
+  curTile.addTo(map);
+  document.querySelectorAll('.style-card').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  notify(el.querySelector('.style-lbl').textContent+' style applied');
+}
+
+// ── STATE ──
+let sequences = [];
+let currentEase = 'ease-in-out';
+let zoomTarget = 8;
+let duration = 3;
+let playing = false, playInterval = null, playProgress = 0, currentSeqIdx = 0;
+
+// ── COORD DISPLAY ──
+map.on('mousemove',e=>{
+  document.getElementById('latVal').textContent=e.latlng.lat.toFixed(4);
+  document.getElementById('lngVal').textContent=e.latlng.lng.toFixed(4);
+});
+map.on('zoom',()=>document.getElementById('zoomVal').textContent=map.getZoom());
+
+// ── SEARCH ──
+async function handleSearch(e){
+  if(e.key!=='Enter') return;
+  const q=document.getElementById('searchInput').value.trim();
+  if(!q) return;
+  notify('Searching…');
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`);
+    const d=await r.json();
+    if(d.length){
+      const loc={lat:+d[0].lat,lng:+d[0].lon};
+      flyToLocation(loc,zoomTarget,d[0].display_name.split(',')[0],d[0].display_name.split(',')[1]?.trim()||'');
+      document.getElementById('labelName').value=d[0].display_name.split(',')[0];
+      document.getElementById('labelSub').value=d[0].display_name.split(',').slice(1,3).join(',').trim();
+    } else notify('Location not found');
+  } catch{ notify('Search error'); }
+}
+
+// ── FLY TO ──
+function flyToLocation(latlng, zoom, name, sub){
+  const dur = duration * 1000;
+  map.flyTo([latlng.lat,latlng.lng], zoom, {
+    animate:true,
+    duration: duration
+  });
+  document.getElementById('flyPin').classList.remove('show');
+  document.getElementById('locLabel').classList.remove('show');
+  setTimeout(()=>{
+    document.getElementById('flyPin').classList.add('show');
+    if(name){
+      document.getElementById('locName').textContent = name;
+      document.getElementById('locSub').textContent = sub||'';
+      document.getElementById('locLabel').classList.add('show');
+    }
+    setTimeout(()=>{
+      document.getElementById('flyPin').classList.remove('show');
+      document.getElementById('locLabel').classList.remove('show');
+    }, 3000);
+  }, dur*0.8);
+  notify('Flying to '+name);
+}
+
+// ── ZOOM SETTINGS ──
+function updateZoomTarget(v){
+  zoomTarget=+v;
+  document.getElementById('zoomTargetVal').textContent=v;
+}
+function updateDuration(v){
+  duration=+v;
+  document.getElementById('durationVal').textContent=v+'s';
+  updateTotalTime();
+}
+function setEase(e,el){
+  currentEase=e;
+  document.querySelectorAll('.ease-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ── LABEL ──
+function applyLabel(){
+  const name=document.getElementById('labelName').value.trim();
+  const sub=document.getElementById('labelSub').value.trim();
+  if(!name){notify('Enter a location name first');return;}
+  document.getElementById('locName').textContent=name;
+  document.getElementById('locSub').textContent=sub;
+  document.getElementById('locLabel').classList.add('show');
+  document.getElementById('flyPin').classList.add('show');
+  setTimeout(()=>{
+    document.getElementById('locLabel').classList.remove('show');
+    document.getElementById('flyPin').classList.remove('show');
+  },3500);
+  notify('Label: '+name);
+}
+
+// ── SEQUENCE ──
+function addCurrentView(){
+  const c=map.getCenter();
+  const z=map.getZoom();
+  const name=document.getElementById('labelName').value||`View ${sequences.length+1}`;
+  const sub=document.getElementById('labelSub').value||'';
+  sequences.push({lat:c.lat,lng:c.lng,zoom:z,targetZoom:zoomTarget,duration,ease:currentEase,name,sub});
+  renderSeqList();
+  updateTotalTime();
+  notify('Keyframe '+sequences.length+' added: '+name);
+}
+
+function renderSeqList(){
+  const list=document.getElementById('seqList');
+  const prev=document.getElementById('previewSeq');
+  list.innerHTML='';
+  prev.innerHTML='';
+  if(sequences.length===0){
+    prev.innerHTML='<div style="font-size:10px;color:var(--muted);font-style:italic;">No keyframes yet</div>';
+  }
+  sequences.forEach((s,i)=>{
+    // Sidebar item
+    const el=document.createElement('div');
+    el.className='seq-item'+(i===currentSeqIdx?' active':'');
+    el.innerHTML=`
+      <div class="seq-num">${i+1}</div>
+      <div class="seq-info">
+        <div class="seq-name">${s.name}</div>
+        <div class="seq-meta">Zoom ${s.targetZoom} · ${s.duration}s · ${s.ease.replace('ease-','')}</div>
+      </div>
+      <div class="seq-del" onclick="deleteSeq(${i},event)">✕</div>
+    `;
+    el.addEventListener('click',()=>previewSeq(i));
+    list.appendChild(el);
+
+    // Preview step
+    const ps=document.createElement('div');
+    ps.className='preview-step'+(i===currentSeqIdx?' current':'');
+    ps.id='ps-'+i;
+    ps.textContent=`${i+1}. ${s.name} → Z${s.targetZoom}`;
+    prev.appendChild(ps);
+  });
+
+  // Update TL markers
+  const markers=document.getElementById('tlMarkers');
+  markers.innerHTML='';
+  sequences.forEach((s,i)=>{
+    const pct=(i/(Math.max(sequences.length-1,1)))*100;
+    const m=document.createElement('div');
+    m.style.cssText=`position:absolute;left:${pct}%;transform:translateX(-50%);font-size:9px;color:var(--gold);top:4px;`;
+    m.textContent=i+1;
+    markers.appendChild(m);
+  });
+}
+
+function deleteSeq(i,e){
+  e.stopPropagation();
+  sequences.splice(i,1);
+  if(currentSeqIdx>=sequences.length) currentSeqIdx=Math.max(0,sequences.length-1);
+  renderSeqList();
+  updateTotalTime();
+  notify('Keyframe removed');
+}
+
+function previewSeq(i){
+  currentSeqIdx=i;
+  const s=sequences[i];
+  flyToLocation({lat:s.lat,lng:s.lng},s.targetZoom,s.name,s.sub);
+  renderSeqList();
+}
+
+// ── PLAY ALL ──
+let seqPlayIdx=0;
+function previewAll(){
+  if(sequences.length===0){notify('Add keyframes first');return;}
+  seqPlayIdx=0;
+  playNextSeq();
+}
+
+function playNextSeq(){
+  if(seqPlayIdx>=sequences.length) return;
+  const s=sequences[seqPlayIdx];
+  currentSeqIdx=seqPlayIdx;
+  renderSeqList();
+  flyToLocation({lat:s.lat,lng:s.lng},s.targetZoom,s.name,s.sub);
+  seqPlayIdx++;
+  setTimeout(playNextSeq,(s.duration*1000)+1200);
+}
+
+// ── TIMELINE ──
+let tlProgress=0, tlPlaying=false, tlInterval2=null;
+function getTotalDuration(){
+  if(sequences.length===0) return 10;
+  return sequences.reduce((a,s)=>a+s.duration,0);
+}
+function updateTotalTime(){
+  const tot=getTotalDuration();
+  document.getElementById('tlTot').textContent=formatTime(tot);
+}
+function formatTime(s){
+  const m=Math.floor(s/60);
+  const sec=(s%60).toFixed(0).padStart(2,'0');
+  return `${m}:${sec}`;
+}
+function togglePlay(){
+  tlPlaying=!tlPlaying;
+  document.getElementById('playBtn').textContent=tlPlaying?'⏸':'▶';
+  if(tlPlaying){
+    if(sequences.length>0) previewAll();
+    const tot=getTotalDuration();
+    tlInterval2=setInterval(()=>{
+      tlProgress=Math.min(tlProgress+(100/(tot*10)),100);
+      document.getElementById('tlFill').style.width=tlProgress+'%';
+      document.getElementById('tlHead').style.left=tlProgress+'%';
+      document.getElementById('tlCur').textContent=formatTime((tlProgress/100)*tot);
+      if(tlProgress>=100){tlPlaying=false;clearInterval(tlInterval2);document.getElementById('playBtn').textContent='▶';tlProgress=0;}
+    },100);
+  } else { clearInterval(tlInterval2); }
+}
+function seekTl(e){
+  const r=e.currentTarget.getBoundingClientRect();
+  tlProgress=Math.max(0,Math.min(100,((e.clientX-r.left)/r.width)*100));
+  document.getElementById('tlFill').style.width=tlProgress+'%';
+  document.getElementById('tlHead').style.left=tlProgress+'%';
+  const tot=getTotalDuration();
+  document.getElementById('tlCur').textContent=formatTime((tlProgress/100)*tot);
+}
+function skipBack(){tlProgress=0;document.getElementById('tlFill').style.width='0%';document.getElementById('tlHead').style.left='0%';document.getElementById('tlCur').textContent='0:00';if(sequences.length>0)previewSeq(0);}
+function skipForward(){if(sequences.length>0)previewSeq(sequences.length-1);}
+
+// ── EXPORT ──
+function exportSequence(){
+  if(sequences.length===0){notify('Add keyframes first');return;}
+  const data={
+    title:'GeoLayer Documentary Sequence',
+    created:new Date().toISOString(),
+    keyframes:sequences.map((s,i)=>({
+      index:i+1,name:s.name,subtitle:s.sub,
+      lat:+s.lat.toFixed(6),lng:+s.lng.toFixed(6),
+      zoom:s.targetZoom,duration:s.duration,easing:s.ease
+    }))
+  };
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='geolayer-sequence.json';
+  a.click();
+  notify('Sequence exported as JSON');
+}
+
+// ── INIT ──
+updateTotalTime();
+renderSeqList();
+
+// Preload India example
+setTimeout(()=>{
+  notify('Welcome — search a location & add keyframes');
+},500);
+</script>
+</body>
+</html>
