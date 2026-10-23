@@ -4,8 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GeoLayer Studio — Documentary Edition</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css"/>
+<script src="vendor/leaflet/leaflet.js"></script>
+<link rel="stylesheet" href="vendor/leaflet-draw/leaflet.draw.css"/>
+<script src="vendor/leaflet-draw/leaflet.draw.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 
@@ -300,6 +302,7 @@ input[type=range]{width:100%;accent-color:var(--gold);margin:4px 0 10px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
 </style>
+<link rel="stylesheet" href="studio.css"/>
 </head>
 <body>
 
@@ -311,6 +314,7 @@ input[type=range]{width:100%;accent-color:var(--gold);margin:4px 0 10px;}
   <div class="sep"></div>
   <span class="badge">Documentary Edition · Phase 2</span>
   <div class="hdr-right">
+    <button class="btn btn-gold" id="exportGeoJSON">⬇ Export GeoJSON</button>
     <button class="btn" onclick="previewAll()">▶ Preview All</button>
     <button class="btn btn-gold" onclick="exportSequence()">⬇ Export Sequence</button>
   </div>
@@ -320,6 +324,41 @@ input[type=range]{width:100%;accent-color:var(--gold);margin:4px 0 10px;}
 
   <!-- LEFT SIDEBAR -->
   <div class="sidebar">
+
+    <section class="sec" aria-labelledby="drawingTitle">
+      <h2 class="sec-title" id="drawingTitle">Draw & Export</h2>
+      <p class="tool-help">Use the map toolbar to draw points, lines, rectangles, or polygons. Edit or delete shapes with the tools below it.</p>
+      <label class="field-label" for="featureName">Name for next drawing</label>
+      <input class="search-input plain-input" id="featureName" placeholder="e.g. Study area" maxlength="120"/>
+      <p class="tool-help" id="drawingStatus" role="status">No features yet. Draw on the map to begin.</p>
+      <div id="featureList" class="feature-list" aria-label="Drawings and routes"></div>
+    </section>
+
+    <section class="sec" aria-labelledby="routesTitle">
+      <h2 class="sec-title" id="routesTitle">Route to GeoJSON</h2>
+      <label class="field-label" for="routeMode">Travel mode</label>
+      <select id="routeMode" class="search-input plain-input">
+        <option value="driving">Car · road route</option>
+        <option value="flight">Airplane · estimated flight path</option>
+        <option value="ship">Ship · manual waypoints</option>
+      </select>
+      <p class="tool-help" id="routeHelp"></p>
+      <div id="routeEndpoints">
+        <label class="field-label" for="routeStart">Start · latitude, longitude</label>
+        <div class="endpoint-row">
+          <input class="search-input plain-input" id="routeStart" placeholder="13.0827, 80.2707"/>
+          <button class="btn pick-btn" id="pickStart" aria-label="Pick start on map">Pick</button>
+        </div>
+        <label class="field-label" for="routeEnd">End · latitude, longitude</label>
+        <div class="endpoint-row">
+          <input class="search-input plain-input" id="routeEnd" placeholder="12.9716, 77.5946"/>
+          <button class="btn pick-btn" id="pickEnd" aria-label="Pick end on map">Pick</button>
+        </div>
+      </div>
+      <button class="btn route-build" id="buildRoute">Create road route</button>
+      <p class="tool-help" id="routeStatus" role="status" aria-live="polite"></p>
+      <p class="tool-help">Google Maps has no ship or flight routing API. Road routes here use OpenStreetMap / OSRM, not Google. Flight paths are estimates; ship routes follow your waypoints and are not for navigation.</p>
+    </section>
 
     <!-- Search -->
     <div class="sec">
@@ -365,6 +404,7 @@ input[type=range]{width:100%;accent-color:var(--gold);margin:4px 0 10px;}
   <!-- MAP -->
   <div class="map-wrap">
     <div id="map"></div>
+    <div class="map-status" id="mapStatus" role="status" hidden>Map tiles are unavailable. Check your Internet connection or environment network settings.</div>
     <div class="vignette"></div>
 
     <!-- Location label -->
@@ -456,18 +496,22 @@ input[type=range]{width:100%;accent-color:var(--gold);margin:4px 0 10px;}
   <div class="tl-time"><span id="tlCur">0:00</span> / <span id="tlTot">0:00</span></div>
 </div>
 
-<div class="notif" id="notif"></div>
+<div class="notif" id="notif" role="status"></div>
 
 <script>
 // ── MAP ──
 const map = L.map('map',{center:[20,78],zoom:4,zoomControl:false,doubleClickZoom:false});
 
 const tiles = {
-  streets: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_matter_no_labels/{z}/{x}/{y}{r}.png',{attribution:'© CartoDB'}),
-  dark:    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© CartoDB'}),
+  streets: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_matter_no_labels/{z}/{x}/{y}{r}.png',{attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © CARTO'}),
+  dark:    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © CARTO'}),
   satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'© Esri'}),
-  terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{attribution:'© OpenTopoMap'}),
+  terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap, SRTM | © OpenTopoMap (CC-BY-SA)'}),
 };
+Object.values(tiles).forEach(tile=>{
+  tile.on('tileerror',()=>{if(tile===curTile) document.getElementById('mapStatus').hidden=false;});
+  tile.on('tileload',()=>{if(tile===curTile) document.getElementById('mapStatus').hidden=true;});
+});
 tiles.streets.addTo(map);
 let curTile = tiles.streets;
 
@@ -486,6 +530,14 @@ let currentEase = 'ease-in-out';
 let zoomTarget = 8;
 let duration = 3;
 let playing = false, playInterval = null, playProgress = 0, currentSeqIdx = 0;
+let notificationTimeout;
+function notify(message){
+  const element=document.getElementById('notif');
+  element.textContent=message;
+  element.classList.add('show');
+  clearTimeout(notificationTimeout);
+  notificationTimeout=setTimeout(()=>element.classList.remove('show'),3500);
+}
 
 // ── COORD DISPLAY ──
 map.on('mousemove',e=>{
@@ -727,5 +779,7 @@ setTimeout(()=>{
   notify('Welcome — search a location & add keyframes');
 },500);
 </script>
+<script src="geojson.js"></script>
+<script src="studio.js"></script>
 </body>
 </html>
